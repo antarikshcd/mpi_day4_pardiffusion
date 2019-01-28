@@ -2,6 +2,8 @@
 
 subroutine read_input(filename, Nx, Ny, sim_time, D, dt)
     USE mod_diff, ONLY:MK! contains allocation subroutine
+    use mod_string_caseconv
+
    implicit none
    !integer :: MK
    character(len=256) :: buffer, keyword, cvalue, filename
@@ -25,20 +27,24 @@ subroutine read_input(filename, Nx, Ny, sim_time, D, dt)
                       !print*,'cvalue:', cvalue !debug
                       !print*, 'lenght of keyword:', len(keyword) !debug
                       slen = len_trim(keyword)
-                      !print*,'slen:', slen !debug
-                      if (keyword(1:slen) == 'Nx') then
+
+                      ! conver to upper
+                      call To_upper(keyword(1:slen))
+                      !print*,'keyword:', keyword !debug
+                      
+                      if (keyword(1:slen) == 'NX') then
                           read(cvalue,*) Nx
                           !print*, 'Nx= ', Nx ! debug
-                      elseif (keyword(1:slen) == 'Ny') then
+                      elseif (keyword(1:slen) == 'NY') then
                           read(cvalue,*) Ny
                           !print*, 'Ny= ', Ny ! debug
-                      elseif (keyword(1:slen) == 'sim_time') then
+                      elseif (keyword(1:slen) == 'SIM_TIME') then
                           read(cvalue,*) sim_time
                           !print*, 'sim_time= ', sim_time !debug
                       elseif (keyword(1:slen) == 'D') then
                           read(cvalue,*) D
                           !print*, 'D= ', D !debug
-                      elseif (keyword(1:slen) == 'dt') then
+                      elseif (keyword(1:slen) == 'DT') then
                           read(cvalue,*) dt
                           !print*, 'dt= ', dt !debug
                         

@@ -62,6 +62,7 @@ all: $(TARGET)
 OBJS =	m_data.o\
 	    m_alloc.o\
 	    m_mpi_initialize.o\
+	    m_string_caseconv.o\
 	    s_initialize.o\
 	    s_fileout.o\
 	    s_updatefield.o\
@@ -93,7 +94,9 @@ s_read_input.o: s_read_input.f90
 s_restart.o: s_restart.f90
 	$(F77) $(FFLAGS) -c s_restart.f90
 m_mpi_initialize.o: m_mpi_initialize.f90 m_data.o
-	$(F77) $(FFLAGS)  -c m_mpi_initialize.f90 		     
+	$(F77) $(FFLAGS)  -c m_mpi_initialize.f90
+m_string_caseconv.o: m_string_caseconv.f90
+	$(F77) $(FFLAGS)  -c m_string_caseconv.f90 	 		     
 m_alloc.o: m_alloc.f90 m_data.o
 	$(F77) $(FFLAGS) -c m_alloc.f90
 m_data.o: m_data.f90

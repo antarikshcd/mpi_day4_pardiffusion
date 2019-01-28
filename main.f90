@@ -45,7 +45,7 @@ INTERFACE
     END SUBROUTINE elem_update_field
     
     ! subroutine initialize
-    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, L, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, info)
+    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, info)
         
         USE mod_diff, ONLY:MK! contains allocation subroutine
         implicit none
@@ -53,34 +53,31 @@ INTERFACE
         integer, intent(inout) :: nstep, nstep_start, Nx, Ny, D
         real, intent(inout) :: Lx, Ly, sim_time, dt
         integer :: Nx_tmp, Ny_tmp, info ! Nx, Ny from the hotstat file 
-        real(MK), dimension(:, :), allocatable :: T_old, L, T_new
+        real(MK), dimension(:, :), allocatable :: T_old, T_new
         real(MK), dimension(:,:), allocatable :: tmp_field
         character(len=*) :: inp_file, hotstart_file
         logical :: file_exists
     END SUBROUTINE initialize
     !subroutine to dave restart file
     subroutine save_restart(hotstart_file, Nx, Ny, D, sim_time, dt, itstep, T_old)
-     USE mod_diff, ONLY:MK! contains allocation subroutine
-    implicit none
-    !integer :: MK
-    character(len=*) :: hotstart_file
-    integer :: Nx, Ny, D, itstep
-    real :: sim_time, dt
-    real(MK), dimension (:,:) :: T_old
-end subroutine save_restart
+        USE mod_diff, ONLY:MK! contains allocation subroutine
+        implicit none
+        !integer :: MK
+        character(len=*) :: hotstart_file
+        integer :: Nx, Ny, D, itstep
+        real :: sim_time, dt
+        real(MK), dimension (:,:) :: T_old
+    end subroutine save_restart
    
 END INTERFACE
 
-
+! initialize MPI
 call mpi_initialize(rank, size, name, status, ierror)
 
 
 !Initialize
-call initialize(Lx, Ly, nstep, T_old, T_new, L, inp_file, hotstart_file, &
+call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, &
                 Nx, Ny, D, sim_time, nstep_start, dt, info)
-
-! reallocate T_old with changed size (here it remains same)
-!call alloc(L, T_new, T_old, Nx, Ny, info)
 
 ! set the dt, dx, dy
 
@@ -107,25 +104,9 @@ print*, 'Using the input values:'
 print*, 'sim_time=',sim_time,'[s], Nx=',Nx,&
         ', Ny=',Ny,', dt=',dt,'[s], No. of time steps=', nstep
 
-!set the dirichlet boundary condition
-!T_old(1:Nx,1) = 1.0
-!T_old(1:Nx,Ny) = 1.0
-!T_old(1,1:Ny) = 1.0
-!T_old(Ny,1:Ny) = 1.0
-
-!T_new(1:Nx,1) = 1.0
-!T_new(1:Nx,Ny) = 1.0
-!T_new(1,1:Ny) = 1.0
-!T_new(Ny,1:Ny) = 1.0
-
 ! square the discrete lengths
-sq_dx = dx**2
-sq_dy = dy**2
-
-!call cpu_time(cpu_t1)
-
-!call system_clock(count=timer_start, count_rate=timer_rate)
-
+rsq_dx = 1/dx**2
+rsq_dy = 1/dy**2
 
 ! distribute the grid in the i-direction to different proc
 ! Ny
@@ -160,7 +141,7 @@ endif
 print*,'rank: ', rank, 'Nx: ', Nx_local
 
 ! allocate local T_old and T_new!!!!!!!!!!!!
-call alloc(L, T_new_loc, T_old_loc, Nx_local, Ny_local, info)
+call alloc(T_new_loc, T_old_loc, Nx_local, Ny_local, info)
 !call alloc(L, sendmsg, recvmsg, Nx_local, Ny_local)
 
 
@@ -245,7 +226,7 @@ DO k=nstep_start,nstep
 !!           the T_old = T_new update will take care of the values for T_old
 !!        C] T_old update isn't required when it is the first time-step as everything starts from 0.0
     
-   ! send and receive T_old
+   ! send and receive T_old to update the ghost layers
     if (size .ne. 1) then
 
         if (rank .eq. 0) then
@@ -296,104 +277,17 @@ DO k=nstep_start,nstep
 
         endif
     endif
+    ! end ghost layer update
 
-
-
-
-
+    ! forward euler time integration
     DO j=2, Ny_local-1
         DO i=2,Nx_local-1
             !laplacian
-            laplacian = (T_old_loc(i+1,j) - 2*T_old_loc(i,j) + T_old_loc(i-1,j))/sq_dx + &
-                        (T_old_loc(i,j+1) - 2*T_old_loc(i,j) + T_old_loc(i,j-1))/sq_dy
+            laplacian = (T_old_loc(i+1,j) - 2*T_old_loc(i,j) + T_old_loc(i-1,j))*rsq_dx + &
+                        (T_old_loc(i,j+1) - 2*T_old_loc(i,j) + T_old_loc(i,j-1))*rsq_dy
             
             !update T_new_loc
             T_new_loc(i,j) = D*laplacian*dt + T_old_loc(i,j)      
-
-            ! write the ghost layer update sequence !!!!!!!!!!!!!!!!!!!!!!!
-            
-            !if (size .ne. 1) then
-            !
-            !    if (rank.eq.0) then
-            !    
-            !    
-            !        if ( i.eq.Nx_local-1) then ! first rank
-            !            ! send Nx-1 to rank+1
-            !            !msg = T_new_loc(i, j)
-            !            count = 1
-            !            dest = rank + 1
-            !            call MPI_Send( T_new_loc(i, j), count, MPI_DOUBLE_PRECISION, dest,&
-            !                          tag, MPI_COMM_WORLD, ierror)
-            !    
-            !        !elseif ( i.eq.Nx_local) then
-            !            ! receive from rank+1
-            !            src = rank + 1
-            !            count = 1
-            !    
-            !            call MPI_Recv(T_new_loc(i+1,j), count, MPI_DOUBLE_PRECISION, src, tag,&
-            !                          MPI_COMM_WORLD, status, ierror)
-            !    
-            !            !T_new_loc(i+1,j) = msg
-            !    
-            !        endif                                                  
-            !    
-            !    elseif (rank .eq. size-1) then ! last rank
-            !    
-            !        if ( i.eq.2) then
-            !            ! send Nx-1 to rank+1
-            !            !msg = T_new_loc(i, j)
-            !            count = 1
-            !            dest = rank - 1
-            !            call MPI_Send(T_new_loc(i, j), count, MPI_DOUBLE_PRECISION,&
-            !                           dest, tag, MPI_COMM_WORLD, ierror)
-            !    
-            !        !elseif ( i.eq.0) then
-            !            ! receive from rank+1
-            !            src = rank - 1
-            !            count = 1
-            !    
-            !            call MPI_Recv(T_new_loc(i-1,j), count, MPI_DOUBLE_PRECISION, &
-            !                          src, tag, MPI_COMM_WORLD, status, ierror)
-            !    
-            !            !T_new_loc(i-1,j) = msg
-            !    
-            !        endif                                                  
-            !    
-            !    
-            !    else ! middle ranks use sendrecv
-            !        
-            !        if (i.eq.2) then  
-            !            !msg_send = T_new_loc(i,j)
-            !            dest = rank - 1
-            !            src = rank + 1
-            !            count_send = 1
-            !            count_recv = 1
-            !    
-            !            call MPI_SENDRECV(T_new_loc(i,j), count_send, MPI_DOUBLE_PRECISION, dest, sendtag,&
-            !                              T_new_loc(Nx_local, j), count_recv, MPI_DOUBLE_PRECISION,&
-            !                              src, recvtag, MPI_COMM_WORLD, status, ierror)
-            !    
-            !            !T_new_loc(Nx_local, j) = msg_recv
-            !    
-            !        elseif (i.eq.Nx_local-1) then
-            !    
-            !            !msg_send = T_new_loc(i,j)
-            !            dest = rank + 1
-            !            src = rank - 1
-            !            count_send = 1
-            !            count_recv = 1
-            !    
-            !            call MPI_SENDRECV(T_new_loc(i,j), count_send, MPI_DOUBLE_PRECISION, dest, sendtag, &
-            !                              T_new_loc(1, j), count_recv, MPI_DOUBLE_PRECISION,&
-            !                              src, recvtag, MPI_COMM_WORLD, status, ierror)
-            !    
-            !            !T_new_loc(1, j) = msg_recv
-            !    
-            !        endif                                                  
-            !    
-            !    endif    
-            !    !! END THE GHOST lAYER UPDATE SEQUENCE!!!!!!!!!!!!!!!
-            ! endif
 
         ENDDO
         ! end the do loop over i
@@ -420,10 +314,10 @@ print*,'loop done'
 
 ! print the field for each rank
 
-print*,'T for rank ', rank
-do j = 1, Ny
-    print*, T_new_loc(:, j)
-enddo
+!print*,'T for rank ', rank !debug
+!do j = 1, Ny                !debug
+!    print*, T_new_loc(:, j) !debug
+!enddo                       !debug
 
 ! creates the sub-array type               
 if (rank .eq. 0) then
@@ -461,7 +355,6 @@ if (rank .eq. 0) then
 
 endif
 
-!call file_out(Nx_local, Ny_local, dx, dy, T_new_loc)
 ! barrier to ensure that rank=0 creates the data types
 call MPI_Barrier(MPI_COMM_WORLD, ierror)
 
@@ -506,23 +399,7 @@ if (size .ne. 1) then
     
             endif
         enddo
-    
-        ! call cpu clock
-        !call cpu_time(cpu_t2)
-        !call system_clock(count=timer_stop)
-        !cputime_timestep = (cpu_t2 - cpu_t1)/real(k-1)
-        !e_time = real(timer_stop - timer_start)/timer_rate
-    
-        !print*, 'CPU TIME= ', cputime_timestep*100,'[s]'
-        !print*, 'CPU TIME per time-step = ', cputime_timestep
-        !print*, 'Wall time = ', e_time, '[s]'
-    
-        !print*, 'total time steps = ',(k-1)
-        !print*, 'total time = ',tot_time,'[s]'
-    
-    ! write the final field
-         !call file_out(Nx, Ny, dx, dy, T_new)
-    
+        
     endif    
 endif
     ! fill in the rank=0 matrix
@@ -538,8 +415,6 @@ if (rank .eq. 0) then
     call file_out(Nx, Ny, dx, dy, T_new)
 
 endif    
-
-
 
 ! wait for the root to write the file
 call MPI_Barrier(MPI_COMM_WORLD, ierror)

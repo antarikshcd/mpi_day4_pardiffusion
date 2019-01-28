@@ -1,5 +1,5 @@
 !intitalization subroutine
-subroutine  initialize(Lx, Ly, nstep, T_old, T_new, L, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, info)
+subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, info)
     use mod_alloc
     USE mod_diff, ONLY:MK! contains allocation subroutine
 
@@ -8,7 +8,7 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, L, inp_file, hotstart_file, 
     integer, intent(inout) :: nstep, nstep_start, Nx, Ny, D
     real, intent(inout) :: Lx, Ly, sim_time, dt
     integer :: Nx_tmp, Ny_tmp, info ! Nx, Ny from the hotstat file 
-    real(MK), dimension(:, :), allocatable :: T_old, L, T_new
+    real(MK), dimension(:, :), allocatable :: T_old, T_new
     real(MK), dimension(:,:), allocatable :: tmp_field
     character(len=*) :: inp_file, hotstart_file
     logical :: file_exists
@@ -64,16 +64,15 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, L, inp_file, hotstart_file, 
         nstep = int(sim_time/dt)
 
         ! reallocate T_old, T_new  and L
-        call alloc(L, T_new, T_old, Nx, Ny, info)            
+        call alloc(T_new, T_old, Nx, Ny, info)            
         T_old = tmp_field
 
         deallocate(tmp_field, stat=info)
         !endif 
     else
-        call alloc(L, T_new, T_old, Nx, Ny, info)
+        call alloc(T_new, T_old, Nx, Ny, info)
             !initital condition
         T_old(:,:) = 0.0 ! temperature field at time step n
-        L(:,:) = 0.0 !laplacian array
         nstep_start = 1
     endif
 

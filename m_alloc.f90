@@ -5,11 +5,11 @@ module mod_alloc
         module procedure salloc, dalloc
     end interface alloc    	
     contains
-        subroutine salloc(L, T_new, T_old, Nx, Ny, info)
+        subroutine salloc(T_new, T_old, Nx, Ny, info)
             implicit none
             integer, parameter :: MK = KIND(1.0E0)
             integer :: Nx,Ny,info
-            real(MK), dimension(:, :), allocatable :: T_old, T_new, L
+            real(MK), dimension(:, :), allocatable :: T_old, T_new
             real(MK), dimension(:, :), allocatable :: work !local temp array
             ! if already allocated do not reallocate
             if (.not.allocated(T_old)) then
@@ -45,29 +45,14 @@ module mod_alloc
                 !deallocate work
                 deallocate(work, stat=info)                    
             endif
-            ! allocation of L
-            if (.not.allocated(L)) then
-                allocate(L(Nx,Ny), stat=info)
-                !print*,'6 status:', info
-            else
-                allocate(work(Nx, Ny), stat=info)
-                work = L
-                deallocate(L, stat=info)
-
-                allocate(L(Nx, Ny), stat=info)
-                L = work
-
-                ! deallocate work
-                deallocate(work, stat=info)                    
-            endif
 
         end subroutine salloc
         
-        subroutine dalloc(L, T_new, T_old, Nx, Ny, info)
+        subroutine dalloc(T_new, T_old, Nx, Ny, info)
             implicit none
             integer, parameter :: MK = KIND(1.0D0)
             integer :: Nx,Ny,info
-            real(MK), dimension(:, :), allocatable :: T_old, T_new, L
+            real(MK), dimension(:, :), allocatable :: T_old, T_new
             real(MK), dimension(:,:), allocatable :: work !local temp array
             ! if already allocated do not reallocate
             if (.not. allocated(T_old)) then
@@ -103,21 +88,6 @@ module mod_alloc
                 !deallocate work
                 deallocate(work, stat=info)                    
             endif
-            ! allocation of L
-            if (.not.allocated(L)) then
-                allocate(L(Nx,Ny), stat=info)
-                !print*,'6 status:', info
-            else
-                allocate(work(Nx, Ny), stat=info)
-                work = L
-                deallocate(L, stat=info)
-
-                allocate(L(Nx, Ny), stat=info)
-                L = work
-
-                ! deallocate work
-                deallocate(work, stat=info)                    
-            endif    
         
         end subroutine dalloc
 end module mod_alloc

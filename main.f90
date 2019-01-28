@@ -45,7 +45,7 @@ INTERFACE
     END SUBROUTINE elem_update_field
     
     ! subroutine initialize
-    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, info)
+    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, rank, info)
         
         USE mod_diff, ONLY:MK! contains allocation subroutine
         implicit none
@@ -57,6 +57,7 @@ INTERFACE
         real(MK), dimension(:,:), allocatable :: tmp_field
         character(len=*) :: inp_file, hotstart_file
         logical :: file_exists
+        integer :: rank
     END SUBROUTINE initialize
     !subroutine to dave restart file
     subroutine save_restart(hotstart_file, Nx, Ny, D, sim_time, dt, itstep, T_old)
@@ -77,7 +78,7 @@ call mpi_initialize(rank, size, name, status, ierror)
 
 !Initialize
 call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, &
-                Nx, Ny, D, sim_time, nstep_start, dt, info)
+                Nx, Ny, D, sim_time, nstep_start, dt, rank, info)
 
 ! set the dt, dx, dy
 
@@ -90,7 +91,9 @@ dt_limit = MIN(dx,dy)**2/REAL(4*D)
 !print*,'dt_limit= ', dt_limit !DEBUG
 IF (dt.GE.dt_limit) THEN
     !print*, 'dt-dt_limit=',(dt-dt_limit) !DEBUG
-    print*, 'WARNING! Fourier limit violated. Ensuring compliance by reducing time-step....'
+    if (rank .eq. 0) then
+        print*, 'WARNING! Fourier limit violated. Ensuring compliance by reducing time-step....'
+    endif
     dt = dt_limit - 0.001*dt_limit !reduce by 0.1% from the dt limit
     nstep = int(sim_time/dt)
 
@@ -99,11 +102,11 @@ ENDIF
 ! force total time steps for benchmark
 !nstep = 100
 !print*, 'Forcing total time steps = ',nstep
-
-print*, 'Using the input values:' 
-print*, 'sim_time=',sim_time,'[s], Nx=',Nx,&
-        ', Ny=',Ny,', dt=',dt,'[s], No. of time steps=', nstep
-
+if (rank .eq. 0) then
+    print*, 'Using the input values:' 
+    print*, 'sim_time=',sim_time,'[s], Nx=',Nx,&
+            ', Ny=',Ny,', dt=',dt,'[s], No. of time steps=', nstep
+endif
 ! square the discrete lengths
 rsq_dx = 1/dx**2
 rsq_dy = 1/dy**2
@@ -308,7 +311,7 @@ DO k=nstep_start,nstep
     call MPI_Barrier(MPI_COMM_WORLD,ierror) 
 
 ENDDO
-print*,'loop done'
+!print*,'loop done'
 
 !!!GATHER ALL THE T_local into T_global!!!!!!!!!!!!!!
 

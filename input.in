@@ -1,0 +1,17 @@
+# input file for diffusion problem
+#--------------------------------
+
+# Number of grid points in x
+Nx = 21
+
+# Number of gridpoints in y
+Ny = 21
+
+# Total simulation time
+sim_time = 0.125
+
+# Diffusion constant
+D = 1
+
+# time step: delta t
+#dt = 0.1

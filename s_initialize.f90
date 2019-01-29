@@ -1,5 +1,7 @@
 !intitalization subroutine
-subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, rank, info)
+subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file,&
+                       load_file, Nx, Ny, D, sim_time, nstep_start, dt, rank,&
+                        flag_save, info)
     use mod_alloc
     USE mod_diff, ONLY:MK! contains allocation subroutine
 
@@ -10,8 +12,8 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx,
     integer :: Nx_tmp, Ny_tmp, info ! Nx, Ny from the hotstat file 
     real(MK), dimension(:, :), allocatable :: T_old, T_new
     real(MK), dimension(:,:), allocatable :: tmp_field
-    character(len=*) :: inp_file, hotstart_file
-    logical :: file_exists
+    character(len=*) :: inp_file, hotstart_file, load_file
+    logical :: file_exists, flag_save
     ! mpi
     integer :: rank
     
@@ -22,6 +24,8 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx,
     !default data
     inp_file = 'input.in'
     hotstart_file = 'hotstart.bck'
+    !load_file = 'Tserial_Nx000021_Ny000021.bin'
+    load_file = 'Tserial_Nx004096_Ny004096.bin'
     Nx=21
     Ny=21
     D=1
@@ -31,6 +35,9 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx,
     nstep=200 ! number of time steps   
     sim_time = 0.125  ! total simulation time 
     dt = sim_time/real(nstep) ! time step
+
+    !flag to either save or load files for rms comparison
+    flag_save = .False.
 
     inquire(FILE=inp_file, EXIST=file_exists)
     if (file_exists) then

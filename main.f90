@@ -45,7 +45,9 @@ INTERFACE
     END SUBROUTINE elem_update_field
     
     ! subroutine initialize
-    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, Nx, Ny, D, sim_time, nstep_start, dt, rank, info)
+    SUBROUTINE  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, &
+                           hotstart_file, load_file, Nx, Ny, D, sim_time,&
+                            nstep_start, dt, rank, flag_save, info)
         
         USE mod_diff, ONLY:MK! contains allocation subroutine
         implicit none
@@ -55,8 +57,8 @@ INTERFACE
         integer :: Nx_tmp, Ny_tmp, info ! Nx, Ny from the hotstat file 
         real(MK), dimension(:, :), allocatable :: T_old, T_new
         real(MK), dimension(:,:), allocatable :: tmp_field
-        character(len=*) :: inp_file, hotstart_file
-        logical :: file_exists
+        character(len=*) :: inp_file, hotstart_file, load_file
+        logical :: file_exists, flag_save
         integer :: rank
     END SUBROUTINE initialize
     !subroutine to dave restart file
@@ -77,9 +79,10 @@ call mpi_initialize(rank, size, name, status, ierror)
 
 
 !Initialize
-call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file, &
-                Nx, Ny, D, sim_time, nstep_start, dt, rank, info)
 
+call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file,&
+                       load_file, Nx, Ny, D, sim_time, nstep_start, dt, rank,&
+                        flag_save, info)
 ! set the dt, dx, dy
 
 dx = Lx/REAL(Nx - 1) ! discrete length in x
@@ -100,9 +103,10 @@ IF (dt.GE.dt_limit) THEN
 ENDIF        
 
 ! force total time steps for benchmark
-!nstep = 100
-!print*, 'Forcing total time steps = ',nstep
+nstep = 1000
 if (rank .eq. 0) then
+    print*, 'Forcing total time steps = ',nstep 
+    
     print*, 'Using the input values:' 
     print*, 'sim_time=',sim_time,'[s], Nx=',Nx,&
             ', Ny=',Ny,', dt=',dt,'[s], No. of time steps=', nstep
@@ -417,7 +421,54 @@ if (rank .eq. 0) then
     ! write the final field
     call file_out(Nx, Ny, dx, dy, T_new)
 
+    ! save the field matrix
+    
+    if (flag_save) then
+        write(savename, '(A,I6.6,A,I6.6,A)') 'Tserial_Nx', Nx,'_Ny', Ny,'.bin'
+        open(23, FILE=savename, FORM='unformatted', STATUS='replace')
+        write(23) Nx
+        write(23) Ny
+        write(23) nstep
+        write(23) T_new ! store the array
+        close(23)
+    
+    else
+        ! load the savefile
+        INQUIRE(FILE=load_file, EXIST=file_exists)
+        if (file_exists) then
+            open(29, file=load_file, form='unformatted')
+            read(29) Nx_serial
+            read(29) Ny_serial
+            read(29) nstep_serial
+            allocate(T_serial(Nx_serial, Ny_serial), stat=info)        
+            read(29) T_serial
+            close(29)
+        
+            if(Nx_serial.eq.Nx .and. Ny_serial.eq.Ny &
+                .and. nstep_serial.eq.nstep ) then
+                ! compute the rms value parallel field with T_serial
+                sum = 0.0
+                do j=1,Ny
+                    do i=1,Nx
+                        diff = T_new(i, j) - T_serial(i, j)
+                        sum = sum + diff*diff                           
+                    enddo
+                enddo
+                rms = (sum/(Nx*Ny))**0.5
+                print*,'RMS error= ', rms
+            else
+                
+                print*,"WARNING: Fields don't match! RMS value not computed!"
+                print*,'Details of loaded serial field:'
+                print*,'Nx_serial: ', Nx_serial,'Ny_serial: ', &
+                        Ny_serial, 'nstep_serial: ', nstep_serial
+            endif
+        endif
+    endif
+
+
 endif    
+
 
 ! wait for the root to write the file
 call MPI_Barrier(MPI_COMM_WORLD, ierror)

@@ -17,7 +17,7 @@ module mod_diff
     character(len=256) :: inp_file, hotstart_file
     
     ! time variables
-    real(mk) :: t1, t2, wall_time  
+    real(mk) :: t1, t2, wall_time, total_time 
 
     ! MPI variables  
     integer :: rank, size, ierror, ierror, tag, &

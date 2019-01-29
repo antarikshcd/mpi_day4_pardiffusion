@@ -78,6 +78,8 @@ END INTERFACE
 call mpi_initialize(rank, size, name, status, ierror)
 
 
+! start clock
+t1 = MPI_Wtime()
 !Initialize
 
 call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file,&
@@ -470,8 +472,28 @@ if (rank .eq. 0) then
 endif    
 
 
+t2 = MPI_Wtime()
+
+! add the time
+call MPI_Reduce(t2-t1, total_time, 1, MPI_DOUBLE_PRECISION, MPI_SUM, &
+                0, MPI_COMM_WORLD, info)
+
+if (rank .eq. 0) then
+    
+    ! average wall time
+    wall_time = total_time/size
+    ! output the wall clock time
+    write(savename, '(A)') 'Nproc_vs_time.dat'            
+    open(13, file=savename, position='append')
+    write(13, *) size, wall_time
+    close(13)
+    !call flush(13) 
+endif
+
+
 ! wait for the root to write the file
 call MPI_Barrier(MPI_COMM_WORLD, ierror)
+
 ! terminate MPI
 call MPI_Finalize(ierror)
 

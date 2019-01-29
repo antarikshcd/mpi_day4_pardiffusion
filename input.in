@@ -2,10 +2,10 @@
 #--------------------------------
 
 # Number of grid points in x
-Nx = 4096
+Nx = 21
 
 # Number of gridpoints in y
-Ny = 4096
+Ny = 21
 
 # Total simulation time
 sim_time = 0.125

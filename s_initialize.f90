@@ -24,8 +24,8 @@ subroutine  initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file,&
     !default data
     inp_file = 'input.in'
     hotstart_file = 'hotstart.bck'
-    !load_file = 'Tserial_Nx000021_Ny000021.bin'
-    load_file = 'Tserial_Nx004096_Ny004096.bin'
+    load_file = 'Tserial_Nx000021_Ny000021.bin'
+    !load_file = 'Tserial_Nx004096_Ny004096.bin'
     Nx=21
     Ny=21
     D=1

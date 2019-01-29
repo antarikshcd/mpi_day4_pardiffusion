@@ -105,7 +105,7 @@ IF (dt.GE.dt_limit) THEN
 ENDIF        
 
 ! force total time steps for benchmark
-nstep = 1000
+!nstep = 1000
 if (rank .eq. 0) then
     print*, 'Forcing total time steps = ',nstep 
     
@@ -215,6 +215,7 @@ endif
 ! end Dirichlet boundary condition assignment  !!!!!!!!!!!!!!!  
 
 !euler time integration
+print*,'enter loop'
 DO k=nstep_start,nstep
     
     ! Saving a hotstart file for T_old at each time-step
@@ -316,8 +317,10 @@ DO k=nstep_start,nstep
     ! place a barrier before moving the iteration to the next time-step
     call MPI_Barrier(MPI_COMM_WORLD,ierror) 
 
+    !print*,'Rank: ', rank, 'k= ', k
+
 ENDDO
-!print*,'loop done'
+print*,'loop done'
 
 !!!GATHER ALL THE T_local into T_global!!!!!!!!!!!!!!
 
@@ -408,17 +411,28 @@ if (size .ne. 1) then
     
             endif
         enddo
+        ! update the rank 0 local field
+        indi = int(Nx/size)
+        T_new(1:indi, 1:Ny) = T_new_loc(1:Nx_local-1, 1:Ny)
         
-    endif    
+    endif
+else
+
+        indi = int(Nx/size)
+        T_new(1:indi, 1:Ny) = T_new_loc(1:Nx_local-1, 1:Ny)    
 endif
-    ! fill in the rank=0 matrix
+
+! deallocate memory from the local arrays
+deallocate(T_new_loc, stat=info)
+deallocate(T_old_loc, stat=info)
+deallocate(T_old, stat=info)
+
+
+
 ! wait for the root to write the file
 call MPI_Barrier(MPI_COMM_WORLD, ierror)
 
 if (rank .eq. 0) then
-
-    indi = int(Nx/size)
-    T_new(1:indi, 1:Ny) = T_new_loc(1:Nx_local-1, 1:Ny)
 
     ! write the final field
     call file_out(Nx, Ny, dx, dy, T_new)

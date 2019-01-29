@@ -13,19 +13,19 @@ module mod_mpi_initialize
 
             ! initialize MPI
             call MPI_Init(ierror)
-            !print*, 'MPI initializion error signal: ',ierror
+            print*, 'MPI initializion error signal: ',ierror
             
             ! print the rnak of MPI_COMM_WORLD
             call MPI_Comm_RANK(MPI_COMM_WORLD, rank, ierror)
-            !print*, 'MPI rank: ', rank, 'error status: ',ierror
+            print*, 'MPI rank: ', rank, 'error status: ',ierror
             
             ! print the total number of sizes in the communicator
             call MPI_Comm_Size(MPI_COMM_WORLD, size, ierror)
-            !print*, 'MPI size: ', size, 'error status: ',ierror
+            print*, 'MPI size: ', size, 'error status: ',ierror
             
             ! print the processor name
             call MPI_Get_Processor_Name(name, ilen, ierror) 
-            !print*,'MPI processor name', name(1:ilen), 'error status: ',ierror
+            print*,'MPI processor name', name(1:ilen), 'error status: ',ierror
 
             allocate(status(MPI_STATUS_SIZE), stat=info)
 

@@ -78,13 +78,15 @@ END INTERFACE
 call mpi_initialize(rank, size, name, status, ierror)
 
 
-! start clock
-t1 = MPI_Wtime()
+
 !Initialize
 
 call initialize(Lx, Ly, nstep, T_old, T_new, inp_file, hotstart_file,&
                        load_file, Nx, Ny, D, sim_time, nstep_start, dt, rank,&
                         flag_save, info)
+!deallocate t_old
+deallocate(T_old, stat=info)
+
 ! set the dt, dx, dy
 
 dx = Lx/REAL(Nx - 1) ! discrete length in x
@@ -105,7 +107,7 @@ IF (dt.GE.dt_limit) THEN
 ENDIF        
 
 ! force total time steps for benchmark
-!nstep = 1000
+nstep = 1000
 if (rank .eq. 0) then
     print*, 'Forcing total time steps = ',nstep 
     
@@ -214,8 +216,13 @@ else
 endif    
 ! end Dirichlet boundary condition assignment  !!!!!!!!!!!!!!!  
 
+
+
+
+! start clock
+t1 = MPI_Wtime()
 !euler time integration
-print*,'enter loop'
+!print*,'enter loop'
 DO k=nstep_start,nstep
     
     ! Saving a hotstart file for T_old at each time-step
@@ -320,17 +327,7 @@ DO k=nstep_start,nstep
     !print*,'Rank: ', rank, 'k= ', k
 
 ENDDO
-print*,'loop done'
-
-!!!GATHER ALL THE T_local into T_global!!!!!!!!!!!!!!
-
-! print the field for each rank
-
-!print*,'T for rank ', rank !debug
-!do j = 1, Ny                !debug
-!    print*, T_new_loc(:, j) !debug
-!enddo                       !debug
-
+!print*,'loop done'
 ! creates the sub-array type               
 if (rank .eq. 0) then
 
@@ -366,7 +363,6 @@ if (rank .eq. 0) then
    endif
 
 endif
-
 ! barrier to ensure that rank=0 creates the data types
 call MPI_Barrier(MPI_COMM_WORLD, ierror)
 
@@ -425,12 +421,12 @@ endif
 ! deallocate memory from the local arrays
 deallocate(T_new_loc, stat=info)
 deallocate(T_old_loc, stat=info)
-deallocate(T_old, stat=info)
-
+!deallocate(T_old, stat=info)
 
 
 ! wait for the root to write the file
 call MPI_Barrier(MPI_COMM_WORLD, ierror)
+
 
 if (rank .eq. 0) then
 
@@ -486,6 +482,7 @@ if (rank .eq. 0) then
 endif    
 
 
+! end time for MPI as most processes end here
 t2 = MPI_Wtime()
 
 ! add the time
